@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
+#include "timer.h"
 
 // Estrutura de dados dos argumentos
 typedef struct {
@@ -54,6 +55,9 @@ int main(int argc, char** argv) {
 
   // Vetor de IDs das threads
   pthread_t* tids;
+
+  // Medidas de tempo;
+  double start, end, delta;
   
   // Testa número de argumentos
   if (argc < 3 || argc > 4) {
@@ -139,6 +143,7 @@ int main(int argc, char** argv) {
   }
 
   // Cria threads
+  GET_TIME(start)
   for (int i = 0; i < numThreads; i++) {
 
     Args_t* arg = (Args_t*) malloc(sizeof(Args_t));
@@ -172,12 +177,16 @@ int main(int argc, char** argv) {
     }
     produtoInternoConc += *res;
   }
+  GET_TIME(end)
+  delta = end - start;
 
   // Mostra produtos internos sequencial e concorrente
   printf("Produto interno sequencial: %f\n", produtoInternoSeq);
   printf("Produto interno concorrente: %f\n", produtoInternoConc);
 
   // Mostra erro relativo
-    printf("Erro relativo: %f\n", fabs((produtoInternoSeq - produtoInternoConc)/produtoInternoSeq));
+  double erroRelativo = fabs((produtoInternoSeq - produtoInternoConc)/produtoInternoSeq);
+  printf("Erro relativo: %lf\n", erroRelativo);
+  printf("Tempo: %lf\n", delta);
 }
 

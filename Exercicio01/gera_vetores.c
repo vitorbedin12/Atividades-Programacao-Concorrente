@@ -36,14 +36,14 @@ int main(int argc, char** argv) {
   float elem;
   for(long int i = 0; i < tamanhoVetores; i++) {
 
-    elem = (rand() * 100.0 / RAND_MAX);
+      elem = (rand() * 1.0 / RAND_MAX);
     vetor1[i] = elem;
 
-    elem = (rand() * 100.0 / RAND_MAX);
+    elem = (rand() * 1.0 / RAND_MAX);
     vetor2[i] = elem;
 
     // Calcula o produto interno simultaneamente
-    produtoInterno += vetor1[i] * vetor2[i];
+    produtoInterno += (1.0 * vetor1[i]) * (1.0 * vetor2[i]);
   }
   
   // Imprime na saída principal o número de vetores se a opção de log foi ativada
