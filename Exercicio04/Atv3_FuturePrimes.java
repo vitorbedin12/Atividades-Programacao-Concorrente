@@ -1,128 +1,112 @@
 /* Disciplina: Programacao Concorrente */
 /* Prof.: Silvana Rossetto */
 /* Laboratório: 11 */
-/* Codigo: Criando um pool de threads em Java */
+/* Codigo: Exemplo de uso de futures */
+/* -------------------------------------------------------------------*/
 
-import java.util.LinkedList;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.Scanner;
 
-//-------------------------------------------------------------------------------
-//!!! Documentar essa classe !!!
-class FilaTarefas {
-    private final int nThreads;
-    private final MyPoolThreads[] threads;
-    private final LinkedList<Runnable> queue;
-    private boolean shutdown;
+import java.util.ArrayList;
+import java.util.List;
 
-    public FilaTarefas(int nThreads) {
-        this.shutdown = false;
-        this.nThreads = nThreads;
-        queue = new LinkedList<Runnable>();
-        threads = new MyPoolThreads[nThreads];
-        for (int i=0; i<nThreads; i++) {
-            threads[i] = new MyPoolThreads();
-            threads[i].start();
-        } 
+
+//classe runnable
+class MyCallable implements Callable<Long> {
+  //construtor
+  MyCallable() {}
+ 
+  //método para execução
+  public Long call() throws Exception {
+    long s = 0;
+    for (long i=1; i<=100; i++) {
+      s++;
     }
-
-    public void execute(Runnable r) {
-        synchronized(queue) {
-            if (this.shutdown) return;
-            queue.addLast(r);
-            queue.notify();
-        }
-    }
-    
-    public void shutdown() {
-        synchronized(queue) {
-            this.shutdown=true;
-            queue.notifyAll();
-        }
-        for (int i=0; i<nThreads; i++) {
-          try { threads[i].join(); } catch (InterruptedException e) { return; }
-        }
-    }
-
-    private class MyPoolThreads extends Thread {
-       public void run() {
-         Runnable r;
-         while (true) {
-           synchronized(queue) {
-             while (queue.isEmpty() && (!shutdown)) {
-               try { queue.wait(); }
-               catch (InterruptedException ignored){}
-             }
-             if (queue.isEmpty()) return;   
-             r = (Runnable) queue.removeFirst();
-           }
-           try { r.run(); }
-           catch (RuntimeException e) {}
-         } 
-       } 
-    } 
+    return s;
+  }
 }
-//-------------------------------------------------------------------------------
 
-//--PASSO 1: cria uma classe que implementa a interface Runnable 
-class Hello implements Runnable {
-   String msg;
-   public Hello(String m) { msg = m; }
-
-   //--metodo executado pela thread
-   public void run() {
-      System.out.println(msg);
+class ehPrimo implements Callable<Integer> {
+   int num;
+   ehPrimo (int num) {
+      this.num = num;
    }
-}
 
-class Primo implements Runnable {
-   int num; 
-   public Primo(int num) { this.num = num; }
-
-   public void run() {
-      if (num <= 1) {
-         System.out.println(num + " não é primo");
-         return;
-      }
-
-      if (num == 2) {
-         System.out.println(num + " é primo");
-         return;
-      }
-
-      if (num % 2 == 0) {
-         System.out.println(num + " não é primo");
-         return;
-      }
-
+   public Integer call() throws Exception {
+      if (num <= 1) return 0;
+      if (num == 2) return 1;
+      if (num % 2 == 0) return 0;
       for (int i = 3; i < Math.sqrt(num) + 1; i += 2) {
-         if (num % i == 0) {
-            System.out.println(num + " não é primo");
-            return;
-         }
-      }
-      System.out.println(num + " é primo");
-      return;
+         if (num % i == 0) return 0;
+      } 
+      return 1;
    }
 }
 
-//Classe da aplicação (método main)
-class MyPool {
-    private static final int NTHREADS = 20;
+//classe do método main
+public class Atv3_FuturePrimes{
+  private static int N;
+  private static int NTHREADS;
 
-    public static void main (String[] args) {
-      //--PASSO 2: cria o pool de threads
-      FilaTarefas pool = new FilaTarefas(NTHREADS); 
-      
-      //--PASSO 3: dispara a execução dos objetos runnable usando o pool de threads
-      for (int i = 0; i < 25; i++) {
-        final String m = "Hello da tarefa " + i;
-        Runnable hello = new Hello(m);
-        pool.execute(hello);
-        Runnable primo = new Primo(i);
-        pool.execute(primo);
+  public static void main(String[] args) {
+    // Pega número de threads e N
+    Scanner scan = new Scanner(System.in);
+    System.out.println("NTHREADS:");
+    NTHREADS = scan.nextInt();
+    System.out.println("N:");
+    N = scan.nextInt();
+
+    //cria um pool de threads (NTHREADS)
+    ExecutorService executor = Executors.newFixedThreadPool(NTHREADS);
+    //cria uma lista para armazenar referencias de chamadas assincronas
+    List<Future<Long>> list = new ArrayList<Future<Long>>();
+
+    //lista de futuros para checagem de primos
+    List<Future<Integer>> primesList = new ArrayList<Future<Integer>>();
+
+    for (int i = 0; i < N; i++) {
+      Callable<Long> worker = new MyCallable();
+      Callable<Integer> workerPrime = new ehPrimo(i+1);
+      /*submit() permite enviar tarefas Callable ou Runnable e obter um objeto Future para acompanhar o progresso e recuperar o resultado da tarefa
+       */
+      Future<Long> submit = executor.submit(worker);
+      list.add(submit);
+      Future<Integer> submitPrime = executor.submit(workerPrime);
+      primesList.add(submitPrime);
+    }
+
+    System.out.println(list.size());
+    //pode fazer outras tarefas...
+
+    //recupera os resultados e faz o somatório final
+    long sum = 0;
+    for (Future<Long> future : list) {
+      try {
+        sum += future.get(); //bloqueia se a computação nao tiver terminado
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
       }
+    }
+    System.out.println(sum);
 
-      //--PASSO 4: esperar pelo termino das threads
-      pool.shutdown();
-      System.out.println("Terminou");
-   }
+    long primos = 0;
+    for (Future<Integer> future : primesList) {
+      try {
+        primos += future.get();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      }
+    }
+    System.out.println("De 1 a " + N + " existem " + primos + " primos.");
+
+    executor.shutdown();
+  }
 }
